@@ -6,46 +6,83 @@ interface ConvitePageProps {
   params: Promise<{ token: string }>;
 }
 
-async function getGuestRecord(token: string) {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/convidados/${token}`, {
-      cache: 'no-store',
-    });
-    if (res.ok) return await res.json();
-  } catch {
-    // Supabase not configured
+async function getGuestData(token: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  let dbGuest = null;
+
+  if (supabaseUrl && serviceKey && !supabaseUrl.includes('placeholder')) {
+    try {
+      const { createServerClient } = await import('@/lib/supabase');
+      const supabase = createServerClient();
+
+      const { data, error } = await supabase
+        .from('convidados')
+        .select('*')
+        .eq('token', token)
+        .maybeSingle();
+
+      if (!error && data) {
+        dbGuest = data;
+      }
+    } catch (err) {
+      console.error('Error fetching guest in Server Component:', err);
+    }
   }
+
+  if (dbGuest) {
+    return {
+      token: dbGuest.token,
+      familia: dbGuest.familia,
+      criancas: dbGuest.criancas,
+      confirmado: dbGuest.confirmado,
+      confirmados: dbGuest.confirmados,
+      observacao: dbGuest.observacao,
+    };
+  }
+
+  // Fallback to static guests
+  const staticGuest = getGuest(token);
+  if (staticGuest) {
+    return {
+      token: staticGuest.token,
+      familia: staticGuest.familia,
+      criancas: staticGuest.criancas,
+      confirmado: false,
+      confirmados: [],
+      observacao: null,
+    };
+  }
+
   return null;
 }
 
 export default async function ConvitePage({ params }: ConvitePageProps) {
   const { token } = await params;
-  const guest = getGuest(token);
+  const record = await getGuestData(token);
 
-  if (!guest) notFound();
-
-  const record = await getGuestRecord(token);
-  const jaConfirmado = record?.confirmado ?? false;
-  const confirmadosAnteriores: string[] = record?.confirmados ?? [];
+  if (!record) notFound();
 
   return (
     <InviteExperience
       token={token}
-      familia={guest.familia}
-      criancas={guest.criancas}
-      jaConfirmado={jaConfirmado}
-      confirmadosAnteriores={confirmadosAnteriores}
+      familia={record.familia}
+      criancas={record.criancas}
+      jaConfirmado={record.confirmado}
+      confirmadosAnteriores={record.confirmados}
     />
   );
 }
 
 export async function generateMetadata({ params }: ConvitePageProps) {
   const { token } = await params;
-  const guest = getGuest(token);
-  if (!guest) return { title: 'Convite não encontrado' };
+  const record = await getGuestData(token);
+  
+  if (!record) return { title: 'Convite não encontrado' };
+  
   return {
-    title: `⚠️ Missão Especial para ${guest.familia} — Aniversário do Lorenzo 🕷️`,
-    description: `${guest.familia}, você foi escolhido para a missão especial do aniversário de 6 anos do Lorenzo!`,
+    title: `⚠️ Missão Especial para ${record.familia} — Aniversário do Lorenzo 🕷️`,
+    description: `${record.familia}, você foi escolhido para a missão especial do aniversário de 6 anos do Lorenzo!`,
   };
 }

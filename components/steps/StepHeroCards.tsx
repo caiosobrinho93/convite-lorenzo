@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Zap, Heart, Award, ArrowRight, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Shield, Zap, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { StepProps } from '../InviteExperience';
 import { NavButtons, ComicPanelBottom } from './StepMeet';
 
@@ -15,17 +15,239 @@ interface CardData {
   special: string;
   avatarEmoji: string;
   avatarColor: string;
+  photo: string;
+}
+
+const getCardStyle = (index: number, total: number, activeIndex: number) => {
+  const isActive = index === activeIndex;
+  if (isActive) {
+    return { rotate: 0, x: 0, y: -25, zIndex: 50 };
+  }
+  const diff = index - activeIndex;
+  const spacing = total > 2 ? 80 : 95; // wider spacing for larger cards
+  const offset = diff < 0 ? -22 : 22;
+  const x = diff * spacing + offset;
+  const rotate = diff * 8;
+  const distance = Math.abs(diff);
+  const zIndex = 30 - distance;
+  const y = distance * 12;
+  
+  return { rotate, x, y, zIndex };
+};
+
+function HeroCard({
+  card,
+  index,
+  total,
+  onClick,
+  activeIndex,
+  entranceDone,
+}: {
+  card: CardData;
+  index: number;
+  total: number;
+  onClick: () => void;
+  activeIndex: number;
+  entranceDone: boolean;
+}) {
+  const [flipped, setFlipped] = useState(false);
+  const isActive = index === activeIndex;
+
+  const style = getCardStyle(index, total, activeIndex);
+
+  return (
+    <motion.div
+      onClick={() => {
+        if (!isActive) {
+          onClick();
+          setFlipped(false); // reset flip when selecting
+        } else {
+          setFlipped(!flipped);
+        }
+      }}
+      initial={{ y: 350, opacity: 0, scale: 0.5 }}
+      animate={{
+        x: style.x,
+        y: style.y,
+        opacity: 1,
+        rotate: style.rotate,
+        scale: isActive ? 1.08 : 0.82,
+        zIndex: style.zIndex,
+      }}
+      transition={{
+        type: 'spring',
+        stiffness: 110,
+        damping: 16,
+        delay: entranceDone ? 0 : 0.2 + index * 0.12,
+      }}
+      className="absolute cursor-pointer w-[235px] h-[330px]"
+      style={{ perspective: 1000 }}
+    >
+      <motion.div
+        className="relative w-full h-full"
+        style={{ transformStyle: 'preserve-3d' }}
+        animate={{ rotateY: flipped ? 180 : 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* FRONT (FUT GOLD PREMIUM WITH 85% PHOTO HEIGHT) */}
+        <div
+          className="absolute inset-0 w-full h-full p-[3px]"
+          style={{
+            backfaceVisibility: 'hidden',
+            background: 'linear-gradient(135deg, #CFB53B 0%, #B71C1C 50%, #CFB53B 100%)',
+            boxShadow: isActive
+              ? '0 0 25px rgba(255,215,0,0.65), 0 0 45px rgba(229,57,53,0.4), 0 15px 35px rgba(0,0,0,0.85)'
+              : '0 15px 35px rgba(0,0,0,0.7)',
+            clipPath: 'polygon(0 12%, 50% 0, 100% 12%, 100% 88%, 50% 100%, 0 88%)',
+            transition: 'box-shadow 0.3s ease-in-out',
+          }}
+        >
+          {/* Inner container */}
+          <div
+            className="w-full h-full flex flex-col justify-between relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(160deg, #1A0D22 0%, #0A0A1F 100%)',
+              clipPath: 'polygon(0 12%, 50% 0, 100% 12%, 100% 88%, 50% 100%, 0 88%)',
+            }}
+          >
+            {/* Holographic grid grid scanlines */}
+            <div
+              className="absolute inset-0 pointer-events-none opacity-[0.15]"
+              style={{
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px), radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                backgroundSize: '100% 4px, 10px 10px'
+              }}
+            />
+
+            {/* Photo Section: 100% Width and 85% Height */}
+            <div className="relative w-full h-[85%] overflow-hidden bg-black border-b border-[#CFB53B]/20">
+              <img
+                src={card.photo}
+                alt={card.name}
+                className="w-full h-full object-cover object-top"
+              />
+              {/* Fade merge gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A1F] via-transparent to-transparent z-10" />
+            </div>
+
+            {/* Name Section: Remaining 15% Height */}
+            <div className="h-[15%] w-full flex items-center justify-center bg-black/35 pb-2.5">
+              <h3
+                className="text-spider-gold font-black tracking-widest leading-none truncate px-1 text-center uppercase"
+                style={{ fontFamily: 'var(--font-bebas)', fontSize: '1.25rem', textShadow: '1px 1px 0px rgba(0,0,0,0.85)' }}
+              >
+                {card.name}
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        {/* BACK (FUT SHIELD DESIGN - STATS VIEW) */}
+        <div
+          className="absolute inset-0 w-full h-full p-[3px]"
+          style={{
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+            background: 'linear-gradient(135deg, #FFD700 0%, #B71C1C 50%, #FFD700 100%)',
+            boxShadow: '0 15px 35px rgba(0,0,0,0.7)',
+            clipPath: 'polygon(0 12%, 50% 0, 100% 12%, 100% 88%, 50% 100%, 0 88%)',
+          }}
+        >
+          {/* Inner container */}
+          <div
+            className="w-full h-full flex flex-col p-3.5 justify-between relative"
+            style={{
+              background: 'linear-gradient(160deg, #0D0D2B 0%, #1A0010 100%)',
+              clipPath: 'polygon(0 12%, 50% 0, 100% 12%, 100% 88%, 50% 100%, 0 88%)',
+            }}
+          >
+            {/* Header: padded for pointed top */}
+            <div className="flex justify-between items-center border-b border-spider-gold/20 pb-1 pt-3.5 px-1">
+              <span className="text-[8px] text-spider-gold font-black tracking-widest uppercase" style={{ fontFamily: 'var(--font-bebas)' }}>
+                ATRIBUTOS DE COMBATE
+              </span>
+              <Shield size={10} className="text-spider-gold" />
+            </div>
+
+            {/* Stats list */}
+            <div className="flex-1 my-3 flex flex-col justify-center gap-3 px-1.5">
+              {/* Power */}
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-[9px] font-bold text-white/80">
+                  <span className="flex items-center gap-0.5"><Zap size={9} className="text-spider-gold" /> PODER</span>
+                  <span>{card.power}/100</span>
+                </div>
+                <div className="h-1 bg-black/45 rounded-full overflow-hidden border border-white/5">
+                  <div className="h-full bg-gradient-to-r from-red-500 to-spider-gold" style={{ width: `${card.power}%` }} />
+                </div>
+              </div>
+
+              {/* Speed */}
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-[9px] font-bold text-white/80">
+                  <span className="flex items-center gap-0.5"><Zap size={9} className="text-cyan-400" /> VELOCIDADE</span>
+                  <span>{card.speed}/100</span>
+                </div>
+                <div className="h-1 bg-black/45 rounded-full overflow-hidden border border-white/5">
+                  <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500" style={{ width: `${card.speed}%` }} />
+                </div>
+              </div>
+
+              {/* Fun */}
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-[9px] font-bold text-white/80">
+                  <span className="flex items-center gap-0.5"><Heart size={9} className="text-pink-500" /> DIVERSÃO</span>
+                  <span>{card.fun}/100</span>
+                </div>
+                <div className="h-1 bg-black/45 rounded-full overflow-hidden border border-white/5">
+                  <div className="h-full bg-gradient-to-r from-pink-500 to-purple-500" style={{ width: `${card.fun}%` }} />
+                </div>
+              </div>
+
+              {/* Special Ability */}
+              <div className="bg-black/35 p-1.5 border border-white/5 rounded mt-1">
+                <p className="text-[7.5px] text-spider-gold font-bold uppercase tracking-wider">Habilidade Especial:</p>
+                <p className="text-[9.5px] text-white/70 italic leading-snug truncate">{card.special}</p>
+              </div>
+            </div>
+
+            {/* Back footer */}
+            <div className="border-t border-spider-gold/25 pt-1 pb-3.5 text-center">
+              <span className="text-[7.5px] text-spider-gold/75 font-bold uppercase tracking-wider">
+                VOLTAR ↺
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 }
 
 export default function StepHeroCards({ onNext, onPrev, criancas = [], familia }: StepProps) {
-  const [flippedIndex, setFlippedIndex] = useState<number | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeCardIndex, setActiveCardIndex] = useState<number>(0);
+  const [entranceDone, setEntranceDone] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setEntranceDone(true);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const photos = [
+    '/images/lorenzo-1.jpg',
+    '/images/lorenzo-2.jpg',
+    '/images/lorenzo-3.jpg',
+    '/images/lorenzo-4.jpg',
+    '/images/lorenzo-5.jpg',
+    '/images/lorenzo-6.jpg',
+  ];
 
   // Generate cards based on children. If no children, create one for the family.
   const cards: CardData[] = criancas.length > 0 
     ? criancas.map((child, i) => {
-        // Deterministic stats based on name length
-        const base = child.length * 7;
+        const base = child.length * 7 + i;
         const power = 85 + (base % 15);
         const speed = 80 + ((base + 3) % 20);
         const fun = 90 + ((base + 5) % 10);
@@ -37,12 +259,13 @@ export default function StepHeroCards({ onNext, onPrev, criancas = [], familia }
         const avatarEmoji = emojis[base % emojis.length];
 
         const colors = [
-          'from-red-600 to-indigo-900', // Spider classic
-          'from-cyan-500 to-blue-900',  // Future spider
-          'from-amber-500 to-red-900',  // Iron spider
-          'from-purple-600 to-slate-900', // Prowler vibe
+          'from-red-600 to-indigo-900',
+          'from-cyan-500 to-blue-900',
+          'from-amber-500 to-red-900',
+          'from-purple-600 to-slate-900',
         ];
         const avatarColor = colors[base % colors.length];
+        const photo = photos[base % photos.length];
 
         return {
           name: child,
@@ -50,9 +273,10 @@ export default function StepHeroCards({ onNext, onPrev, criancas = [], familia }
           power,
           speed,
           fun,
-          special: 'Super abraço e ataque de cócegas',
+          special: 'Super abraço e teias de teias',
           avatarEmoji,
           avatarColor,
+          photo,
         };
       })
     : [
@@ -65,20 +289,9 @@ export default function StepHeroCards({ onNext, onPrev, criancas = [], familia }
           special: 'Presença VIP de altíssimo impacto',
           avatarEmoji: '🦸‍♂️',
           avatarColor: 'from-red-600 to-indigo-900',
+          photo: '/images/lorenzo-hero.jpg',
         }
       ];
-
-  const currentCard = cards[activeIndex];
-  const isFlipped = flippedIndex === activeIndex;
-
-  const handleFlip = () => {
-    setFlippedIndex(isFlipped ? null : activeIndex);
-  };
-
-  const handleNextCard = () => {
-    setFlippedIndex(null);
-    setActiveIndex((prev) => (prev + 1) % cards.length);
-  };
 
   return (
     <div
@@ -117,7 +330,7 @@ export default function StepHeroCards({ onNext, onPrev, criancas = [], familia }
         })}
       </svg>
 
-      <div className="relative z-10 w-full max-w-sm px-5 flex flex-col items-center gap-4">
+      <div className="relative z-10 w-full max-w-sm px-5 flex flex-col items-center gap-2">
         {/* Title */}
         <motion.div
           initial={{ x: '-110%', skewX: -15 }}
@@ -145,179 +358,75 @@ export default function StepHeroCards({ onNext, onPrev, criancas = [], familia }
           </span>
         </motion.div>
 
-        {/* 3D Card Container */}
-        <div className="relative w-[280px] h-[390px] flex items-center justify-center my-2" style={{ perspective: 1200 }}>
-          <motion.div
-            onClick={handleFlip}
-            className="relative w-full h-full cursor-pointer"
-            style={{
-              transformStyle: 'preserve-3d',
-            }}
-            animate={{ rotateY: isFlipped ? 180 : 0 }}
-            transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-          >
-            {/* FRONT SIDE */}
-            <div
-              className="absolute inset-0 w-full h-full flex flex-col p-4 justify-between"
-              style={{
-                backfaceVisibility: 'hidden',
-                background: 'linear-gradient(155deg, #1A0D22 0%, #0A0A1F 100%)',
-                border: '2px solid rgba(229,57,53,0.4)',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(229,57,53,0.15)',
-                clipPath: 'polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px))',
+        {/* 3D Card fanned container - size increased to support 235x330 cards */}
+        <div className="relative w-full h-[360px] flex items-center justify-center my-3">
+          {/* Left Arrow Button */}
+          {cards.length > 1 && (
+            <button
+              onClick={() => {
+                setActiveCardIndex((prev) => (prev === 0 ? cards.length - 1 : prev - 1));
+                if (navigator.vibrate) navigator.vibrate(30);
               }}
+              className="absolute left-0 z-30 w-10 h-10 rounded-full bg-black/75 border border-spider-gold/50 flex items-center justify-center text-spider-gold shadow-lg active:scale-90 transition-transform cursor-pointer"
+              style={{ filter: 'drop-shadow(0 0 5px rgba(207,181,59,0.3))' }}
+              aria-label="Card anterior"
             >
-              {/* Scanlines & Halftone overlay */}
-              <div className="absolute inset-0 pointer-events-none opacity-20"
-                style={{
-                  backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px), radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)',
-                  backgroundSize: '100% 4px, 12px 12px'
-                }}
-              />
+              <ChevronLeft size={20} />
+            </button>
+          )}
 
-              {/* Card Header */}
-              <div className="flex justify-between items-start border-b border-spider-red-bright/20 pb-2 z-10">
-                <div>
-                  <span className="text-[10px] text-spider-gold font-bold uppercase tracking-widest leading-none block">
-                    {currentCard.title}
-                  </span>
-                  <h3 className="text-white text-lg font-black tracking-wide leading-tight mt-0.5">
-                    {currentCard.name.toUpperCase()}
-                  </h3>
-                </div>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-spider-red/20 border border-spider-red-bright/40 text-xs font-bold text-white">
-                  6★
-                </div>
-              </div>
-
-              {/* Card Character Art (Placeholder with Silhouette) */}
-              <div className="relative flex-1 my-3 flex items-center justify-center overflow-hidden border border-white/5 bg-black/40"
-                style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%)' }}
-              >
-                {/* Holographic glowing background */}
-                <div className={`absolute inset-0 bg-gradient-to-tr ${currentCard.avatarColor} opacity-40 animate-pulse`} />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)]" />
-
-                {/* Character Silhouette / Vibe */}
-                <div className="text-7xl drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] z-10 select-none animate-bounce-gentle">
-                  {currentCard.avatarEmoji}
-                </div>
-
-                <div className="absolute bottom-2 left-2 right-2 text-center bg-black/60 py-1 px-2 border border-white/10 backdrop-blur-sm z-10">
-                  <p className="text-[9px] text-white/50 uppercase tracking-widest">Sincronizando imagem...</p>
-                </div>
-              </div>
-
-              {/* Card Footer / Short teaser */}
-              <div className="flex flex-col gap-1 z-10 border-t border-spider-red-bright/20 pt-2 text-center">
-                <p className="text-spider-gold text-[10px] uppercase font-bold tracking-widest animate-pulse">
-                  TOQUE PARA DETALHES ↺
-                </p>
-              </div>
-            </div>
-
-            {/* BACK SIDE */}
-            <div
-              className="absolute inset-0 w-full h-full flex flex-col p-4 justify-between"
-              style={{
-                backfaceVisibility: 'hidden',
-                transform: 'rotateY(180deg)',
-                background: 'linear-gradient(155deg, #0D0D2B 0%, #1A0010 100%)',
-                border: '2px solid rgba(255,215,0,0.4)',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(255,215,0,0.1)',
-                clipPath: 'polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px))',
+          {/* Right Arrow Button */}
+          {cards.length > 1 && (
+            <button
+              onClick={() => {
+                setActiveCardIndex((prev) => (prev === cards.length - 1 ? 0 : prev + 1));
+                if (navigator.vibrate) navigator.vibrate(30);
               }}
+              className="absolute right-0 z-30 w-10 h-10 rounded-full bg-black/75 border border-spider-gold/50 flex items-center justify-center text-spider-gold shadow-lg active:scale-90 transition-transform cursor-pointer"
+              style={{ filter: 'drop-shadow(0 0 5px rgba(207,181,59,0.3))' }}
+              aria-label="Próximo card"
             >
-              {/* Back Header */}
-              <div className="flex justify-between items-center border-b border-spider-gold/20 pb-2">
-                <span className="text-[10px] text-spider-gold font-bold tracking-widest uppercase">
-                  ATRIBUTOS DE MISSÃO
-                </span>
-                <Shield size={14} className="text-spider-gold" />
-              </div>
+              <ChevronRight size={20} />
+            </button>
+          )}
 
-              {/* Stats Rows */}
-              <div className="flex-1 my-3 flex flex-col justify-center gap-3">
-                {/* Stat 1: Poder */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold text-white/80">
-                    <span className="flex items-center gap-1"><Zap size={12} className="text-spider-gold" /> PODER</span>
-                    <span>{currentCard.power}/100</span>
-                  </div>
-                  <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-red-500 to-spider-gold"
-                      initial={{ width: 0 }}
-                      animate={isFlipped ? { width: `${currentCard.power}%` } : { width: 0 }}
-                      transition={{ duration: 0.8, delay: 0.2 }}
-                    />
-                  </div>
-                </div>
-
-                {/* Stat 2: Velocidade */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold text-white/80">
-                    <span className="flex items-center gap-1"><Zap size={12} className="text-cyan-400" /> VELOCIDADE</span>
-                    <span>{currentCard.speed}/100</span>
-                  </div>
-                  <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-500"
-                      initial={{ width: 0 }}
-                      animate={isFlipped ? { width: `${currentCard.speed}%` } : { width: 0 }}
-                      transition={{ duration: 0.8, delay: 0.3 }}
-                    />
-                  </div>
-                </div>
-
-                {/* Stat 3: Diversão */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold text-white/80">
-                    <span className="flex items-center gap-1"><Heart size={12} className="text-pink-500" /> DIVERSÃO</span>
-                    <span>{currentCard.fun}/100</span>
-                  </div>
-                  <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-pink-500 to-purple-500"
-                      initial={{ width: 0 }}
-                      animate={isFlipped ? { width: `${currentCard.fun}%` } : { width: 0 }}
-                      transition={{ duration: 0.8, delay: 0.4 }}
-                    />
-                  </div>
-                </div>
-
-                {/* Special move */}
-                <div className="mt-1 bg-black/30 p-2 border border-white/5 rounded">
-                  <p className="text-[9px] text-spider-gold font-bold uppercase tracking-wider">Habilidade Especial:</p>
-                  <p className="text-[11px] text-white/70 italic mt-0.5 leading-snug">{currentCard.special}</p>
-                </div>
-              </div>
-
-              {/* Back Footer */}
-              <div className="border-t border-spider-gold/20 pt-2 text-center">
-                <p className="text-[10px] text-spider-gold/75 font-semibold">
-                  VOLTAR AO DESTAQUE ↺
-                </p>
-              </div>
-            </div>
-          </motion.div>
+          <div className="relative w-[320px] h-full flex items-center justify-center">
+            {cards.map((card, index) => {
+              return (
+                <HeroCard
+                  key={index}
+                  card={card}
+                  index={index}
+                  total={cards.length}
+                  onClick={() => setActiveCardIndex(index)}
+                  activeIndex={activeCardIndex}
+                  entranceDone={entranceDone}
+                />
+              );
+            })}
+          </div>
         </div>
 
-        {/* Card info notification */}
-        <p className="text-white/40 text-[10px] text-center max-w-[260px] leading-snug">
-          💡 Este card oficial colecionável será <span className="text-spider-gold font-bold">impresso</span> e entregue a você na festa ao confirmar sua presença!
+        {/* Card info notification without printing mention */}
+        <p className="text-white/40 text-[9px] text-center max-w-[260px] leading-snug mt-1">
+          💡 Toque na carta selecionada para ver seus atributos de missão e habilidades secretas!
         </p>
 
-        {/* Card Switcher for multiple kids */}
+        {/* Card Switcher dots for multiple kids */}
         {cards.length > 1 && (
-          <button
-            onClick={handleNextCard}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-[11px] text-spider-gold font-bold uppercase tracking-widest transition-all"
-            style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))' }}
-          >
-            <RefreshCw size={10} />
-            <span>Ver próximo card ({activeIndex + 1}/{cards.length})</span>
-          </button>
+          <div className="flex gap-1.5 mt-2 z-20">
+            {cards.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveCardIndex(i)}
+                className="w-2.5 h-2.5 rounded-full transition-all duration-300 cursor-pointer"
+                style={{
+                  background: activeCardIndex === i ? '#FFD700' : 'rgba(255,255,255,0.25)',
+                  transform: activeCardIndex === i ? 'scale(1.2)' : 'scale(1)',
+                }}
+              />
+            ))}
+          </div>
         )}
       </div>
 

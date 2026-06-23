@@ -6,25 +6,55 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { token, confirmados, observacao } = body;
 
-    // Validate token
-    const guest = getGuest(token);
-    if (!guest) {
+    // Find guest details (Supabase first, then static list)
+    let guestFamilia = '';
+    let guestCriancas: string[] = [];
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const isSupabaseConfigured = supabaseUrl && serviceKey && !supabaseUrl.includes('placeholder');
+
+    if (isSupabaseConfigured) {
+      try {
+        const { createServerClient } = await import('@/lib/supabase');
+        const supabase = createServerClient();
+
+        const { data: dbGuest } = await supabase
+          .from('convidados')
+          .select('familia, criancas')
+          .eq('token', token)
+          .maybeSingle();
+
+        if (dbGuest) {
+          guestFamilia = dbGuest.familia;
+          guestCriancas = dbGuest.criancas;
+        }
+      } catch (err) {
+        console.error('Error querying guest for confirmation:', err);
+      }
+    }
+
+    if (!guestFamilia) {
+      const staticGuest = getGuest(token);
+      if (staticGuest) {
+        guestFamilia = staticGuest.familia;
+        guestCriancas = staticGuest.criancas;
+      }
+    }
+
+    if (!guestFamilia) {
       return NextResponse.json({ error: 'Convidado não encontrado' }, { status: 404 });
     }
 
-    // Try Supabase if configured
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (supabaseUrl && serviceKey && !supabaseUrl.includes('placeholder')) {
+    if (isSupabaseConfigured) {
       const { createServerClient } = await import('@/lib/supabase');
       const supabase = createServerClient();
 
       const { error } = await supabase.from('convidados').upsert(
         {
           token,
-          familia: guest.familia,
-          criancas: guest.criancas,
+          familia: guestFamilia,
+          criancas: guestCriancas,
           confirmado: true,
           confirmados: confirmados ?? [],
           data_confirmacao: new Date().toISOString(),
@@ -41,7 +71,7 @@ export async function POST(request: NextRequest) {
       // Supabase not configured — log to console (for dev)
       console.log('✅ [DEV] Confirmação recebida:', {
         token,
-        familia: guest.familia,
+        familia: guestFamilia,
         confirmados,
         observacao,
         data: new Date().toISOString(),

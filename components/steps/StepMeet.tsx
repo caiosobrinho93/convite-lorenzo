@@ -245,6 +245,23 @@ export function ComicPhotoPanel({ src, alt, tag }: { src: string; alt: string; t
   );
 }
 
+/* ─── SPIDER WEB BACKGROUND OVERLAY ───────────────────────── */
+export function SpiderWebBG() {
+  return (
+    <svg className="absolute inset-0 w-full h-full opacity-[0.09] pointer-events-none" style={{ zIndex: 1 }}>
+      <circle cx="50%" cy="45%" r="10%" stroke="#ff0000" strokeWidth="0.8" fill="none" />
+      <circle cx="50%" cy="45%" r="20%" stroke="#ff0000" strokeWidth="0.8" fill="none" />
+      <circle cx="50%" cy="45%" r="30%" stroke="#ff0000" strokeWidth="0.8" fill="none" />
+      <circle cx="50%" cy="45%" r="40%" stroke="#ff0000" strokeWidth="0.8" fill="none" />
+      <circle cx="50%" cy="45%" r="50%" stroke="#ff0000" strokeWidth="0.8" fill="none" />
+      <line x1="0" y1="0" x2="100%" y2="100%" stroke="#ff0000" strokeWidth="0.8" />
+      <line x1="100%" y1="0" x2="0" y2="100%" stroke="#ff0000" strokeWidth="0.8" />
+      <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#ff0000" strokeWidth="0.8" />
+      <line x1="0" y1="45%" x2="100%" y2="45%" stroke="#ff0000" strokeWidth="0.8" />
+    </svg>
+  );
+}
+
 export default function StepMeet({ onNext, onPrev }: StepProps) {
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden">
@@ -252,21 +269,23 @@ export default function StepMeet({ onNext, onPrev }: StepProps) {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
           backgroundSize: '20px 20px',
-          zIndex: 1,
+          zIndex: 2,
         }}
       />
       <div
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(160deg, #0A0A1F 0%, #05001A 100%)',
+          background: 'radial-gradient(circle at center, #180507 0%, #060512 70%, #030308 100%)',
           zIndex: 0,
         }}
       />
       
+      <SpiderWebBG />
+      
       {/* Centered Premium comic panel wrapper */}
-      <div className="flex-1 flex items-center justify-center p-4 pb-[170px]">
+      <div className="flex-1 flex items-center justify-center p-4 pb-[170px]" style={{ zIndex: 10 }}>
         <ComicPhotoPanel
           src="/images/lorenzo-2.jpg"
           alt="Lorenzo sorrindo"

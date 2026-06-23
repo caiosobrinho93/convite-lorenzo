@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { StepProps } from '../InviteExperience';
-import { NavButtons, ComicOverlay, ComicPanelBottom, ComicPhotoPanel } from './StepMeet';
+import { NavButtons, ComicOverlay, ComicPanelBottom, ComicPhotoPanel, SpiderWebBG } from './StepMeet';
 
 export default function StepAge({ onNext, onPrev }: StepProps) {
   return (
@@ -12,21 +12,23 @@ export default function StepAge({ onNext, onPrev }: StepProps) {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
           backgroundSize: '20px 20px',
-          zIndex: 1,
+          zIndex: 2,
         }}
       />
       <div
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(160deg, #0A0A1F 0%, #05001A 100%)',
+          background: 'radial-gradient(circle at center, #180507 0%, #060512 70%, #030308 100%)',
           zIndex: 0,
         }}
       />
 
+      <SpiderWebBG />
+
       {/* Centered Premium comic panel wrapper */}
-      <div className="flex-1 flex items-center justify-center p-4 pb-[170px]">
+      <div className="flex-1 flex items-center justify-center p-4 pb-[170px]" style={{ zIndex: 10 }}>
         <ComicPhotoPanel
           src="/images/lorenzo-5.jpg"
           alt="Lorenzo"

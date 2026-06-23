@@ -1,46 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence, useAnimate } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { StepProps } from '../InviteExperience';
-
-/* ─── HALFTONE DOT BACKGROUND ────────────────────────────── */
-const HalftoneLayer = () => (
-  <div
-    className="absolute inset-0 pointer-events-none"
-    style={{
-      backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.18) 1px, transparent 1px)',
-      backgroundSize: '18px 18px',
-      mixBlendMode: 'overlay',
-    }}
-  />
-);
-
-/* ─── SPEED LINES (radiating from center) ───────────────── */
-const SpeedLines = () => (
-  <svg
-    className="absolute inset-0 w-full h-full opacity-20 pointer-events-none"
-    viewBox="0 0 400 800"
-    preserveAspectRatio="xMidYMid slice"
-    fill="none"
-  >
-    {Array.from({ length: 24 }).map((_, i) => {
-      const angle = (i * 360) / 24;
-      const rad = (angle * Math.PI) / 180;
-      const x2 = 200 + Math.cos(rad) * 600;
-      const y2 = 400 + Math.sin(rad) * 600;
-      return (
-        <line
-          key={i}
-          x1="200" y1="400"
-          x2={x2} y2={y2}
-          stroke="white"
-          strokeWidth={i % 3 === 0 ? '1.2' : '0.5'}
-        />
-      );
-    })}
-  </svg>
-);
 
 /* ─── CHROMATIC TEXT ─────────────────────────────────────── */
 const ChromaticText = ({
@@ -74,400 +37,918 @@ const ChromaticText = ({
   </div>
 );
 
-/* ─── GLITCH KEYFRAME ─────────────────────────────────────── */
-const GLITCH_FRAMES = [
-  { x: 0, skew: 0, opacity: 1 },
-  { x: -4, skew: -2, opacity: 0.9 },
-  { x: 6, skew: 1, opacity: 1 },
-  { x: -2, skew: 3, opacity: 0.95 },
-  { x: 0, skew: 0, opacity: 1 },
-];
+type Phase = 'off' | 'scanning' | 'scan_done' | 'biometry_fadeout' | 'typing' | 'fade_console' | 'delay_portal' | 'reveal_cards' | 'ready';
 
-/* ─── SCAN LINE EFFECT ───────────────────────────────────── */
-const ScanLines = () => (
-  <div
-    className="absolute inset-0 pointer-events-none"
-    style={{
-      backgroundImage:
-        'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px)',
-      zIndex: 20,
-    }}
-  />
-);
+const getIntroCardStyle = (index: number, total: number, activeIndex: number) => {
+  const isActive = index === activeIndex;
+  if (isActive) {
+    return { rotate: 0, x: 0, y: -20, zIndex: 50 };
+  }
+  
+  const diff = index - activeIndex;
+  const spacing = total > 2 ? 65 : 80;
+  const offset = diff < 0 ? -18 : 18;
+  const x = diff * spacing + offset;
+  const rotate = diff * 8;
+  const distance = Math.abs(diff);
+  const zIndex = 30 - distance;
+  const y = distance * 10;
+  
+  return { rotate, x, y, zIndex };
+};
 
-/* ─── CLASSIFIED STAMP ───────────────────────────────────── */
-const ClassifiedStamp = ({ visible }: { visible: boolean }) => (
-  <AnimatePresence>
-    {visible && (
-      <motion.div
-        initial={{ scale: 2, opacity: 0, rotate: -25 }}
-        animate={{ scale: 1, opacity: 1, rotate: -15 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="absolute top-8 right-6 z-30"
-      >
-        <div
-          className="px-3 py-1 rounded border-2 text-xs font-black tracking-[0.25em] uppercase"
-          style={{
-            borderColor: '#E53935',
-            color: '#E53935',
-            fontFamily: 'var(--font-bebas)',
-            fontSize: '0.85rem',
-            letterSpacing: '0.3em',
-            opacity: 0.85,
-            transform: 'rotate(-15deg)',
-          }}
-        >
-          CONFIDENCIAL
-        </div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
-
-/* ─── DIAGONAL COLOR BLOCKS ──────────────────────────────── */
-const DiagonalBlocks = ({ step }: { step: number }) => (
-  <>
-    {/* Red diagonal top-left */}
-    <motion.div
-      initial={{ x: '-100%', skewX: 0 }}
-      animate={step >= 0 ? { x: '-20%', skewX: -12 } : { x: '-100%' }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute -top-10 left-0 w-2/3 h-40 pointer-events-none"
-      style={{ background: 'linear-gradient(135deg, #C0392B 0%, #E53935 100%)', opacity: 0.9, zIndex: 1 }}
-    />
-    {/* Blue diagonal bottom-right */}
-    <motion.div
-      initial={{ x: '100%', skewX: 0 }}
-      animate={step >= 1 ? { x: '20%', skewX: -12 } : { x: '100%' }}
-      transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute -bottom-10 right-0 w-2/3 h-32 pointer-events-none"
-      style={{ background: 'linear-gradient(135deg, #1A237E 0%, #283593 100%)', opacity: 0.9, zIndex: 1 }}
-    />
-    {/* Gold accent line */}
-    <motion.div
-      initial={{ scaleX: 0 }}
-      animate={step >= 2 ? { scaleX: 1 } : { scaleX: 0 }}
-      transition={{ duration: 0.4, delay: 0.3, ease: 'easeOut' }}
-      style={{ transformOrigin: 'left center', height: 3, background: '#FFD700', zIndex: 2 }}
-      className="absolute left-0 right-0 top-40 pointer-events-none"
-    />
-  </>
-);
-
-/* ─── MAIN STEP ───────────────────────────────────────────── */
-type Phase = 'black' | 'flash' | 'alert' | 'mis1' | 'mis2' | 'agent' | 'button';
-
-export default function StepMission({ familia, onNext }: StepProps) {
-  const [phase, setPhase] = useState<Phase>('black');
-  const [glitching, setGlitching] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+/* ─── MARVEL BATTLEFIELD GLOW BACKGROUND ─────────────────── */
+function BattlefieldBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const seq: [Phase, number][] = [
-      ['flash', 200],
-      ['alert', 700],
-      ['mis1', 1400],
-      ['mis2', 2000],
-      ['agent', 2700],
-      ['button', 4200],
-    ];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    let timeout: ReturnType<typeof setTimeout>;
-    seq.forEach(([p, delay]) => {
-      timeout = setTimeout(() => setPhase(p), delay);
-    });
+    let animationFrameId: number;
+    let embers: Array<{
+      x: number;
+      y: number;
+      size: number;
+      opacity: number;
+      speedX: number;
+      speedY: number;
+      color: string;
+      wiggle: number;
+      wiggleSpeed: number;
+    }> = [];
 
-    // Glitch at 3.2s
-    setTimeout(() => {
-      setGlitching(true);
-      setTimeout(() => setGlitching(false), 600);
-    }, 3200);
+    const initEmbers = () => {
+      embers = [];
+      const count = 60;
+      const colors = [
+        'rgba(229, 57, 53, ',   // Red
+        'rgba(244, 81, 30, ',   // Deep Orange
+        'rgba(255, 179, 0, ',   // Gold
+        'rgba(255, 235, 59, ',  // Bright Yellow
+      ];
+      for (let i = 0; i < count; i++) {
+        const size = Math.random() * 2.8 + 0.8;
+        const colorBase = colors[Math.floor(Math.random() * colors.length)];
 
-    return () => clearTimeout(timeout);
+        embers.push({
+          x: Math.random() * canvas.width,
+          y: canvas.height + Math.random() * 100,
+          size,
+          opacity: Math.random() * 0.7 + 0.3,
+          speedX: (Math.random() - 0.3) * 0.6,
+          speedY: -(Math.random() * 1.2 + 0.6),
+          color: colorBase,
+          wiggle: Math.random() * Math.PI * 2,
+          wiggleSpeed: Math.random() * 0.04 + 0.01,
+        });
+      }
+    };
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initEmbers();
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    const draw = () => {
+      ctx.fillStyle = '#060309';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const grad1 = ctx.createRadialGradient(
+        canvas.width * 0.2, canvas.height * 0.8, 0,
+        canvas.width * 0.2, canvas.height * 0.8, canvas.width * 0.8
+      );
+      grad1.addColorStop(0, 'rgba(183, 28, 28, 0.18)');
+      grad1.addColorStop(0.5, 'rgba(40, 10, 15, 0.08)');
+      grad1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad1;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const grad2 = ctx.createRadialGradient(
+        canvas.width * 0.8, canvas.height * 0.2, 0,
+        canvas.width * 0.8, canvas.height * 0.2, canvas.width * 0.8
+      );
+      grad2.addColorStop(0, 'rgba(48, 63, 159, 0.12)');
+      grad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad2;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      embers.forEach(ember => {
+        ember.wiggle += ember.wiggleSpeed;
+        ember.x += ember.speedX + Math.sin(ember.wiggle) * 0.25;
+        ember.y += ember.speedY;
+
+        ctx.save();
+        ctx.shadowBlur = ember.size * 2.5;
+        ctx.shadowColor = ember.color.includes('255, 179') || ember.color.includes('255, 235') ? '#FFD700' : '#E53935';
+        ctx.fillStyle = `${ember.color}${ember.opacity})`;
+        ctx.beginPath();
+        ctx.arc(ember.x, ember.y, ember.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        if (ember.y < -20 || ember.x < -20 || ember.x > canvas.width + 20) {
+          ember.y = canvas.height + Math.random() * 40;
+          ember.x = Math.random() * canvas.width;
+          ember.opacity = Math.random() * 0.7 + 0.3;
+        }
+
+        ember.opacity += (Math.random() - 0.5) * 0.05;
+        if (ember.opacity < 0.15) ember.opacity = 0.15;
+        if (ember.opacity > 0.9) ember.opacity = 0.9;
+      });
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
   }, []);
 
-  // Screen shake on flash
-  const shake = phase === 'flash';
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }} />;
+}
 
-  const blockStep =
-    phase === 'black' ? -1
-    : phase === 'flash' ? 0
-    : phase === 'alert' ? 1
-    : 2;
+export default function StepMission({ familia, criancas = [], onNext }: StepProps) {
+  const kidsToRender = criancas.length > 0 ? criancas : ['LUCAS', 'MELISSA', 'GUSTAVO'];
+
+  const [phase, setPhase] = useState<Phase>('off');
+  const [scanPercentage, setScanPercentage] = useState(0);
+  const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const [activeCardIndex, setActiveCardIndex] = useState<number>(() => {
+    return Math.floor(kidsToRender.length / 2);
+  });
+  const [entranceDone, setEntranceDone] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const isScanning = phase === 'scanning';
+  const isScanDone = phase === 'scan_done';
+
+  // Bio-sensor boot action
+  const startBoot = () => {
+    if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
+    setPhase('scanning');
+  };
+
+  // Scanning simulation (0% to 100%)
+  useEffect(() => {
+    if (phase !== 'scanning') return;
+    setScanPercentage(0);
+    const duration = 1600; // 1.6s scanning time
+    const intervalTime = 30;
+    const steps = duration / intervalTime;
+    let currentStep = 0;
+
+    const interval = setInterval(() => {
+      currentStep++;
+      const percent = Math.min(Math.round((currentStep / steps) * 100), 100);
+      setScanPercentage(percent);
+
+      if (percent === 100) {
+        clearInterval(interval);
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+        setTimeout(() => {
+          setPhase('scan_done');
+        }, 300);
+      }
+    }, intervalTime);
+
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  // Transition from scan_done to biometry_fadeout
+  useEffect(() => {
+    if (phase === 'scan_done') {
+      const t = setTimeout(() => {
+        setPhase('biometry_fadeout');
+      }, 2000); // show success green check for 2.0s
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
+
+  // Transition from biometry_fadeout to typing
+  useEffect(() => {
+    if (phase === 'biometry_fadeout') {
+      const t = setTimeout(() => {
+        setPhase('typing');
+      }, 600); // wait for 600ms exit fadeout of biometry
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
+
+  // Cards generation - Dynamic or Simulated family of 3 children
+  const photos = [
+    '/images/lorenzo-1.jpg',
+    '/images/lorenzo-2.jpg',
+    '/images/lorenzo-3.jpg',
+    '/images/lorenzo-4.jpg',
+    '/images/lorenzo-5.jpg',
+    '/images/lorenzo-6.jpg',
+  ];
+
+  const cards = kidsToRender.map((child, i) => {
+    const base = child.length * 7 + i;
+    const badges = ['SUPER AMIGO', 'HERÓI DA DIVERSÃO', 'AGENTE DE COMBATE', 'ATIRADOR DE TEIA', 'MALA DE CHOQUE'];
+    const title = badges[base % badges.length];
+    const photo = photos[base % photos.length];
+    return {
+      name: child.toUpperCase(),
+      title,
+      photo,
+    };
+  });
+
+  const displayName = criancas.length > 0
+    ? (criancas.length === 1 ? criancas[0] : criancas.join(' & '))
+    : familia;
+
+  const subText = criancas.length > 0
+    ? (criancas.length === 1 ? 'Você foi selecionado para esta missão.' : 'Vocês foram selecionados para esta missão.')
+    : 'Sua presença é essencial para esta missão.';
+
+  // Terminal typewriter sequence
+  useEffect(() => {
+    if (phase !== 'typing') return;
+
+    const lines = [
+      '[SISTEMA] INICIANDO DIAGNÓSTICO DO MULTIVERSO...',
+      '[OK] LINK SEGURO DE CONEXÃO: ESTABELECIDO',
+      '[AVISO] FLUXO ENERGÉTICO VARIÁVEL DETECTADO',
+      '[SISTEMA] VERIFICANDO CREDENCIAIS DO GEST...',
+      '[OK] SUCESSO: AGENTES CONFIRMADOS E AUTENTICADOS!',
+      '[SISTEMA] CONFIGURANDO DIRETRIZES DA MISSÃO...'
+    ];
+
+    let timers: NodeJS.Timeout[] = [];
+    setTerminalLines([]);
+
+    lines.forEach((line, idx) => {
+      const t = setTimeout(() => {
+        setTerminalLines(prev => [...prev, line]);
+        if (navigator.vibrate) navigator.vibrate(25);
+
+        if (idx === lines.length - 1) {
+          const autoTransition = setTimeout(() => {
+            setPhase('fade_console');
+          }, 2100); // Wait 2.1s (1s longer) after typing finishes
+          timers.push(autoTransition);
+        }
+      }, idx * 500 + 600);
+      timers.push(t);
+    });
+
+    return () => timers.forEach(clearTimeout);
+  }, [phase]);
+
+  // Transition from fade_console to delay_portal (0.6s wait)
+  useEffect(() => {
+    if (phase === 'fade_console') {
+      const t = setTimeout(() => {
+        setPhase('delay_portal');
+      }, 600);
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
+
+  // Transition from delay_portal to reveal_cards (portal & cards activate)
+  useEffect(() => {
+    if (phase === 'delay_portal') {
+      const t = setTimeout(() => {
+        setPhase('reveal_cards');
+        if (navigator.vibrate) navigator.vibrate([150, 80, 200]);
+      }, 600); // exactly 0.6 seconds wait
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
+
+  // Transition from reveal_cards to ready
+  useEffect(() => {
+    if (phase === 'reveal_cards') {
+      const t = setTimeout(() => {
+        setPhase('ready');
+      }, 1900);
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
+
+  // Set entranceDone when ready phase is reached
+  useEffect(() => {
+    if (phase === 'ready') {
+      setEntranceDone(true);
+    }
+  }, [phase]);
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden flex flex-col items-center justify-center"
-      style={{
-        background:
-          phase === 'black' || phase === 'flash'
-            ? '#000'
-            : 'linear-gradient(160deg, #08081A 0%, #0C0015 50%, #130005 100%)',
-      }}
+      className="relative w-full h-full overflow-hidden flex flex-col items-center justify-center bg-black"
     >
-      {/* Scan lines */}
-      {phase !== 'black' && <ScanLines />}
+      {/* ─── BACKGROUNDS ─── */}
 
-      {/* Spider-Verse BG */}
+      {/* Cyber Grid & Intro BG (Only shown on initial phases) */}
       <AnimatePresence>
-        {phase !== 'black' && phase !== 'flash' && (
+        {(phase === 'off' || phase === 'scanning' || phase === 'scan_done' || phase === 'biometry_fadeout' || phase === 'typing' || phase === 'fade_console') && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0"
+            key="cyber-intro-bg"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.0 }}
+            className="absolute inset-0 w-full h-full pointer-events-none"
             style={{ zIndex: 0 }}
           >
+            {/* Background Image (Teia Vermelha) */}
             <img
-              src="/images/spiderverse-bg.png"
+              src="/images/intro-bg.png"
               alt=""
               className="w-full h-full object-cover"
-              style={{ opacity: 0.18, mixBlendMode: 'screen' }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Halftone */}
-      {phase !== 'black' && <HalftoneLayer />}
-
-      {/* Speed lines */}
-      {phase !== 'black' && phase !== 'flash' && <SpeedLines />}
-
-      {/* Diagonal color blocks */}
-      <DiagonalBlocks step={blockStep} />
-
-      {/* Flash burst */}
-      <AnimatePresence>
-        {phase === 'flash' && (
-          <motion.div
-            initial={{ opacity: 1 }}
-            animate={{ opacity: [1, 0.7, 1, 0] }}
-            transition={{ duration: 0.5, times: [0, 0.2, 0.6, 1] }}
-            className="absolute inset-0 bg-white"
-            style={{ zIndex: 50 }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Classified stamp */}
-      <ClassifiedStamp visible={phase !== 'black' && phase !== 'flash'} />
-
-      {/* ─── CONTENT AREA ──────────────────────────────────── */}
-      <motion.div
-        animate={shake ? { x: [0, -8, 8, -6, 6, 0] } : {}}
-        transition={{ duration: 0.3 }}
-        className="relative z-10 flex flex-col items-start px-5 w-full max-w-sm gap-0"
-        style={{ paddingTop: '40px' }}
-      >
-
-        {/* ALERT BAR */}
-        <div className="h-6 flex items-center mb-3">
-          <motion.div
-            initial={{ x: '-110%', opacity: 0 }}
-            animate={
-              (phase === 'alert' || phase === 'mis1' || phase === 'mis2' || phase === 'agent' || phase === 'button')
-                ? { x: 0, opacity: 1 }
-                : { x: '-110%', opacity: 0 }
-            }
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="flex items-center gap-2"
-          >
-            <motion.div
-              animate={{ opacity: [1, 0, 1] }}
-              transition={{ duration: 0.6, repeat: 8, repeatType: 'loop' }}
-              className="w-3 h-3 rounded-full"
-              style={{ background: '#E53935', boxShadow: '0 0 10px #E53935' }}
-            />
-            <span
-              className="text-white font-black uppercase tracking-[0.3em] text-xs"
-              style={{ fontFamily: 'var(--font-bebas)', letterSpacing: '0.3em', fontSize: '0.7rem' }}
-            >
-              ⚠ ALERTA DE MISSÃO ATIVA
-            </span>
-          </motion.div>
-        </div>
-
-        {/* MISSÃO — sai da esquerda */}
-        <div className="overflow-visible w-full min-h-[5rem] flex items-center">
-          <motion.div
-            initial={{ x: '-120%', skewX: -20, opacity: 0 }}
-            animate={
-              (phase === 'mis1' || phase === 'mis2' || phase === 'agent' || phase === 'button')
-                ? { x: 0, skewX: 0, opacity: 1 }
-                : { x: '-120%', skewX: -20, opacity: 0 }
-            }
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full"
-          >
-            <ChromaticText
-              text="MISSÃO"
               style={{
-                fontFamily: 'var(--font-bebas)',
-                fontSize: 'clamp(4.2rem, 18vw, 5.5rem)',
-                color: 'white',
-                lineHeight: 0.88,
-                letterSpacing: '-0.02em',
-                textShadow: '4px 4px 0px #C0392B, 8px 8px 0px rgba(0,0,0,0.5)',
+                opacity: (phase === 'off' || phase === 'scanning' || phase === 'scan_done') ? 0.25 : 0.08,
+                transition: 'opacity 1s ease-in-out',
               }}
             />
-          </motion.div>
-        </div>
 
-        {/* ESPECIAL — sai da direita */}
-        <div className="overflow-visible w-full min-h-[5rem] flex items-center justify-end">
-          <motion.div
-            initial={{ x: '120%', skewX: 20, opacity: 0 }}
-            animate={
-              (phase === 'mis2' || phase === 'agent' || phase === 'button')
-                ? { x: 0, skewX: 0, opacity: 1 }
-                : { x: '120%', skewX: 20, opacity: 0 }
-            }
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="self-end"
-          >
+            {/* Cyber Grid Lines */}
             <div
+              className="absolute inset-0 opacity-[0.06]"
               style={{
-                fontFamily: 'var(--font-bebas)',
-                fontSize: 'clamp(4.2rem, 18vw, 5.5rem)',
-                lineHeight: 0.88,
-                letterSpacing: '-0.02em',
-                background: 'linear-gradient(135deg, #E53935 0%, #FF6B6B 60%, #FFD700 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                textShadow: 'none',
-                filter: 'drop-shadow(4px 4px 0px rgba(0,0,0,0.6))',
+                backgroundImage: 'linear-gradient(rgba(229,57,53,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(229,57,53,0.15) 1px, transparent 1px)',
+                backgroundSize: '24px 24px',
               }}
-            >
-              ESPECIAL
-            </div>
-          </motion.div>
-        </div>
+            />
 
-        {/* Divider */}
-        <div className="w-full h-8 flex items-center">
-          <motion.div
-            initial={{ scaleX: 0, opacity: 0 }}
-            animate={
-              (phase === 'agent' || phase === 'button')
-                ? { scaleX: 1, opacity: 1 }
-                : { scaleX: 0, opacity: 0 }
-            }
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-            style={{ height: 2, background: 'linear-gradient(90deg, #FFD700, transparent)', width: '100%', transformOrigin: 'left' }}
-          />
-        </div>
-
-        {/* AGENTE SELECIONADO */}
-        <div className="min-h-[85px] w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={
-              (phase === 'agent' || phase === 'button')
-                ? { opacity: 1, y: 0 }
-                : { opacity: 0, y: 20 }
-            }
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col gap-1"
-          >
-            <span
-              className="text-white/50 text-xs uppercase tracking-[0.25em]"
-              style={{ fontFamily: 'var(--font-bebas)' }}
-            >
-              Agente Selecionado:
-            </span>
-            <motion.div
-              animate={glitching ? {
-                x: GLITCH_FRAMES.map(f => f.x),
-                skewX: GLITCH_FRAMES.map(f => f.skew),
-                opacity: GLITCH_FRAMES.map(f => f.opacity),
-              } : {}}
-              transition={{ duration: 0.1 }}
-            >
-              <ChromaticText
-                text={familia.toUpperCase()}
-                style={{
-                  fontFamily: 'var(--font-bebas)',
-                  fontSize: 'clamp(1.6rem, 7vw, 2.2rem)',
-                  color: '#FFD700',
-                  letterSpacing: '0.05em',
-                  textShadow: '2px 2px 0px rgba(0,0,0,0.8)',
-                }}
-              />
-            </motion.div>
-            <p className="text-white/40 text-xs mt-1" style={{ fontFamily: 'var(--font-inter)' }}>
-              Sua presença é essencial para esta missão.
-			</p>
-          </motion.div>
-        </div>
-
-        {/* BOTÃO */}
-        <div className="w-full min-h-[96px] mt-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={phase === 'button' ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full"
-          >
-            <motion.button
-              whileTap={{ scale: 0.96 }}
-              whileHover={{ scale: 1.02 }}
-              onClick={onNext}
-              className="relative overflow-hidden w-full py-5 flex items-center justify-between px-6 group"
+            {/* Halftone Dot Overlay */}
+            <div
+              className="absolute inset-0 opacity-[0.12]"
               style={{
-                background: 'linear-gradient(135deg, #C0392B 0%, #E53935 100%)',
-                clipPath: 'polygon(0 0, calc(100% - 20px) 0, 100% 100%, 20px 100%)',
-                boxShadow: '0 0 40px rgba(229,57,53,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
+                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)',
+                backgroundSize: '16px 16px',
+                mixBlendMode: 'overlay',
               }}
-            >
-              {/* Shine sweep */}
-              <motion.div
-                initial={{ x: '-200%' }}
-                animate={{ x: '200%' }}
-                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)', width: '50%' }}
-              />
-              <span
-                className="text-white font-black tracking-widest"
-                style={{ fontFamily: 'var(--font-bebas)', fontSize: '1.4rem', letterSpacing: '0.15em' }}
-              >
-                ACEITAR MISSÃO
-              </span>
-              <span className="text-white text-2xl">▶</span>
-            </motion.button>
-
-            {/* Sub-text */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={phase === 'button' ? { opacity: 1 } : { opacity: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-white/25 text-[10px] text-center mt-3 uppercase tracking-widest"
-            >
-              Deslize para avançar entre as cenas
-            </motion.p>
+            />
           </motion.div>
-        </div>
-      </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Bottom edge accent */}
+      {/* Marvel Battlefield Background (Embers/Smoke active on reveal_cards & ready) */}
+      {(phase === 'reveal_cards' || phase === 'ready') && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.9 }}
+          className="absolute inset-0 z-0 pointer-events-none"
+        >
+          <BattlefieldBackground />
+        </motion.div>
+      )}
+
+      {/* CRT Scanlines overlay */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-1.5 pointer-events-none"
-        style={{ background: 'linear-gradient(90deg, #C0392B, #FFD700, #1A237E)', zIndex: 10 }}
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px)',
+          zIndex: 25,
+        }}
       />
 
-      {/* Corner web - top left */}
-      <svg
-        className="absolute top-0 left-0 pointer-events-none opacity-20"
-        width="100" height="100"
-        viewBox="0 0 100 100" fill="none"
-        style={{ zIndex: 5 }}
-      >
-        {[15, 35, 55, 75, 95].map(d => (
-          <line key={d} x1="0" y1={d} x2={d} y2="0" stroke="white" strokeWidth="0.8" />
-        ))}
-      </svg>
+      {/* ─── SCREEN 1 & 2: BIO-SENSOR / SCANNING (UNIFIED, CENTERED & SOLID SPACING) ─── */}
+      <AnimatePresence>
+        {(phase === 'off' || phase === 'scanning' || phase === 'scan_done') && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.55, ease: 'easeInOut' }}
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center select-none w-full px-6"
+          >
+            {/* Expanded glowing aura that brightens the background on scan */}
+            <motion.div
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={(isScanning || isScanDone) ? {
+                scale: 3.5,
+                opacity: isScanDone ? [0.35, 0.55, 0.45] : [0, 0.45, 0.35],
+              } : {
+                scale: 0.6,
+                opacity: 0,
+              }}
+              transition={{ duration: 1.4, ease: 'easeOut' }}
+              className={`absolute rounded-full pointer-events-none ${isScanDone ? 'bg-[radial-gradient(circle,_rgba(52,211,153,0.25)_0%,_rgba(250,204,21,0.1)_45%,_transparent_70%)]' : 'bg-[radial-gradient(circle,_rgba(255,215,0,0.25)_0%,_rgba(229,57,53,0.1)_45%,_transparent_70%)]'}`}
+              style={{
+                width: '140px',
+                height: '140px',
+                zIndex: 0,
+                left: 'calc(50% - 70px)',
+                top: 'calc(50% - 138px)',
+              }}
+            />
+
+            {/* Glowing Biometric Button Wrapper - Centered perfectly with Margin Bottom for Spacing */}
+            <div className="relative flex items-center justify-center z-10 w-full mb-14">
+              <motion.div
+                animate={isScanning ? {
+                  scale: 1.85,
+                  boxShadow: [
+                    '0 0 30px rgba(255,215,0,0.4), 0 0 60px rgba(229,57,53,0.3)',
+                    '0 0 60px rgba(255,215,0,0.7), 0 0 100px rgba(229,57,53,0.5)',
+                    '0 0 45px rgba(255,215,0,0.5), 0 0 80px rgba(229,57,53,0.4)'
+                  ],
+                  borderColor: 'rgba(255,215,0,0.75)',
+                } : isScanDone ? {
+                  scale: 1.85,
+                  boxShadow: '0 0 50px rgba(52,211,153,0.75), 0 0 100px rgba(250,204,21,0.55)',
+                  borderColor: 'rgb(52,211,153)',
+                } : {
+                  scale: [1, 1.05, 1],
+                  boxShadow: [
+                    '0 0 15px rgba(229,57,53,0.25)',
+                    '0 0 40px rgba(229,57,53,0.6)',
+                    '0 0 15px rgba(229,57,53,0.25)'
+                  ],
+                  borderColor: 'rgba(229,57,53,0.4)',
+                }}
+                transition={isScanning ? {
+                  type: 'spring',
+                  stiffness: 70,
+                  damping: 14,
+                  boxShadow: { repeat: Infinity, duration: 1.5, ease: 'easeInOut' }
+                } : isScanDone ? {
+                  type: 'spring',
+                  stiffness: 70,
+                  damping: 14,
+                } : {
+                  scale: { repeat: Infinity, duration: 2, ease: 'easeInOut' },
+                  boxShadow: { repeat: Infinity, duration: 2, ease: 'easeInOut' }
+                }}
+                onClick={startBoot}
+                className="w-28 h-28 rounded-full border-2 flex items-center justify-center cursor-pointer bg-black/90 relative overflow-hidden mx-auto"
+              >
+                {/* Glowing Spider logo in center */}
+                <motion.img
+                  src="/images/intro-bg.png"
+                  alt="Logo"
+                  animate={isScanning ? {
+                    scale: 1.15,
+                    filter: 'drop-shadow(0 0 12px rgba(255,215,0,0.85))'
+                  } : isScanDone ? {
+                    scale: 1.15,
+                    filter: 'drop-shadow(0 0 15px rgba(52,211,153,0.95))'
+                  } : {
+                    scale: 1,
+                    filter: 'drop-shadow(0 0 8px rgba(229,57,53,0.5))'
+                  }}
+                  transition={{ type: 'spring', stiffness: 80, damping: 14 }}
+                  className="w-16 h-16 object-contain z-10"
+                />
+
+                {/* Ping animation ring (visible only when OFF) */}
+                {(!isScanning && !isScanDone) && (
+                  <div className="absolute inset-0 rounded-full border border-spider-red-bright/20 animate-ping opacity-40 z-0" />
+                )}
+              </motion.div>
+
+              {/* Water Ripple Waves (Looping continuously during scan) */}
+              {isScanning && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                  {[0, 1, 2, 3].map((idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ scale: 0.35, opacity: 0.9 }}
+                      animate={{
+                        scale: 3.8,
+                        opacity: 0,
+                      }}
+                      transition={{
+                        duration: 1.8,
+                        ease: [0.1, 0.45, 0.1, 1],
+                        repeat: Infinity,
+                        delay: idx * 0.45,
+                      }}
+                      className="absolute rounded-full border-2 border-spider-gold/45 bg-gradient-to-r from-spider-red/8 to-spider-gold/12"
+                      style={{
+                        width: '120px',
+                        height: '120px',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Dynamic Swapping Info text */}
+            <div className="h-[85px] w-full flex items-center justify-center pt-2">
+              <AnimatePresence mode="wait">
+                {phase === 'off' ? (
+                  <motion.div
+                    key="text-off"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-1 w-full"
+                  >
+                    <span className="text-spider-red-bright text-[9px] uppercase font-bold tracking-[0.25em] animate-pulse block">
+                      // AUTENTICAÇÃO REQUERIDA //
+                    </span>
+                    <h1 className="text-white text-md font-black tracking-widest uppercase" style={{ fontFamily: 'var(--font-bebas)' }}>
+                      Acesso Restrito
+                    </h1>
+                    <p className="text-white/40 text-[9px] max-w-[220px] leading-normal mx-auto">
+                      Toque no sensor biométrico acima para validar a sua credencial de herói.
+                    </p>
+                  </motion.div>
+                ) : phase === 'scan_done' ? (
+                  <motion.div
+                    key="text-success"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-1 w-full"
+                  >
+                    <span className="text-emerald-400 text-[9px] uppercase font-bold tracking-[0.25em] block">
+                      ✓ IMPRESSÃO DIGITAL VERIFICADA ✓
+                    </span>
+                    <h1 className="text-spider-gold text-md font-black tracking-widest uppercase" style={{ fontFamily: 'var(--font-bebas)', textShadow: '0 0 10px rgba(250,204,21,0.4)' }}>
+                      Acesso Liberado!
+                    </h1>
+                    <p className="text-emerald-400/60 text-[9px] font-mono max-w-[220px] leading-normal mx-auto animate-pulse">
+                      Carregando terminal de segurança...
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="text-scan"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-1 w-full"
+                  >
+                    <span className="text-spider-gold text-[10px] font-mono uppercase tracking-[0.25em] block animate-pulse">
+                      // ANALISANDO IMPRESSÃO DIGITAL //
+                    </span>
+                    <div className="text-white text-md font-mono font-bold tracking-widest uppercase">
+                      AUTENTICANDO: <span className="text-spider-red-bright">{scanPercentage}%</span>
+                    </div>
+                    <p className="text-white/40 text-[9px] font-mono max-w-[220px] leading-normal mx-auto">
+                      Decodificando chaves de acesso e assinaturas biométricas...
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── SCREEN 3: OS-STYLE REALISTIC TERMINAL ─── */}
+      <AnimatePresence>
+        {(phase === 'typing' || phase === 'fade_console') && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: phase === 'fade_console' ? 0 : 1, scale: phase === 'fade_console' ? 0.95 : 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.55 }}
+            className="absolute inset-0 z-10 flex flex-col items-center justify-start max-w-sm mx-auto px-6 py-12 select-none"
+          >
+            {/* OS-Style Terminal Window Chrome */}
+            <div className="w-full mt-6 rounded-lg border border-white/10 overflow-hidden bg-black/85 shadow-[0_15px_35px_rgba(0,0,0,0.85),_0_0_25px_rgba(229,57,53,0.05)] font-mono">
+              {/* Terminal Header */}
+              <div className="flex items-center justify-between px-4 py-2.5 bg-[#120F16] border-b border-white/5">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] border border-[#E0443E] block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] border border-[#DEA123] block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F] border border-[#1AAB29] block" />
+                </div>
+                <span className="text-[9px] text-white/35 font-bold uppercase tracking-wider">MULTIVERSE_DECODE.SH</span>
+                <div className="w-10" />
+              </div>
+
+              {/* Terminal Body */}
+              <div className="p-4 space-y-2 min-h-[160px] text-left">
+                {terminalLines.map((line, idx) => {
+                  let colorClass = 'text-white/60';
+                  if (line.includes('[OK]') || line.includes('CONFIRMADOS') || line.includes('AUTENTICADOS')) {
+                    colorClass = 'text-spider-gold font-bold';
+                  } else if (line.includes('[SISTEMA]') || line.includes('DIAGNÓSTICO')) {
+                    colorClass = 'text-cyan-400';
+                  } else if (line.includes('[AVISO]')) {
+                    colorClass = 'text-[#FFBD2E]';
+                  }
+                  return (
+                    <motion.p
+                      key={idx}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`text-[9px] leading-relaxed ${colorClass}`}
+                    >
+                      {line}
+                    </motion.p>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── SCREEN 4: CARDS REVEAL (DEEP MARVEL BATTLEFIELD + PORTAL) ─── */}
+      {(phase === 'reveal_cards' || phase === 'ready') && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.65 }}
+          className="relative z-10 flex flex-col items-center justify-between h-full w-full max-w-sm px-6 py-12 select-none"
+        >
+          {/* Header */}
+          <div className="text-center pt-2">
+            <span
+              className="text-spider-red-bright text-[9px] font-black uppercase tracking-[0.25em] block"
+              style={{ letterSpacing: '0.28em' }}
+            >
+              ★ AGENTE CONVOCADO ★
+            </span>
+            <h2
+              style={{
+                fontFamily: 'var(--font-bebas)',
+                fontSize: 'clamp(1.5rem, 7vw, 2.2rem)',
+                color: 'white',
+                lineHeight: 1,
+                marginTop: '2px',
+                textShadow: '2px 2px 0px rgba(0,0,0,0.8)',
+              }}
+            >
+              CREDENCIAL MULTIVERSAL
+            </h2>
+          </div>
+
+          {/* Cards fan container - adjusted for clickable card swap layout */}
+          <div className="relative w-full h-[310px] flex items-center justify-center my-1">
+            {/* Left Arrow Button */}
+            {cards.length > 1 && (
+              <button
+                onClick={() => {
+                  setActiveCardIndex((prev) => (prev === 0 ? cards.length - 1 : prev - 1));
+                  if (navigator.vibrate) navigator.vibrate(30);
+                }}
+                className="absolute left-0 z-30 w-9 h-9 rounded-full bg-black/75 border border-spider-gold/50 flex items-center justify-center text-spider-gold shadow-lg active:scale-90 transition-transform cursor-pointer"
+                style={{ filter: 'drop-shadow(0 0 5px rgba(207,181,59,0.3))' }}
+                aria-label="Card anterior"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
+
+            {/* Right Arrow Button */}
+            {cards.length > 1 && (
+              <button
+                onClick={() => {
+                  setActiveCardIndex((prev) => (prev === cards.length - 1 ? 0 : prev + 1));
+                  if (navigator.vibrate) navigator.vibrate(30);
+                }}
+                className="absolute right-0 z-30 w-9 h-9 rounded-full bg-black/75 border border-spider-gold/50 flex items-center justify-center text-spider-gold shadow-lg active:scale-90 transition-transform cursor-pointer"
+                style={{ filter: 'drop-shadow(0 0 5px rgba(207,181,59,0.3))' }}
+                aria-label="Próximo card"
+              >
+                <ChevronRight size={18} />
+              </button>
+            )}
+            
+            {/* Multiverse Sparking Portal (Doctor Strange Style) */}
+            <div className="absolute w-[310px] h-[310px] flex items-center justify-center pointer-events-none z-0">
+              {/* Outer sparking fire ring */}
+              <motion.svg
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 15, ease: 'linear' }}
+                className="absolute w-full h-full"
+                viewBox="0 0 200 200"
+              >
+                <defs>
+                  <linearGradient id="portalGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FFD700" />
+                    <stop offset="30%" stopColor="#FF8C00" />
+                    <stop offset="70%" stopColor="#FF4500" />
+                    <stop offset="100%" stopColor="#FFD700" />
+                  </linearGradient>
+                </defs>
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="92"
+                  stroke="url(#portalGold)"
+                  strokeWidth="2.5"
+                  fill="none"
+                  strokeDasharray="12 6 4 8 20 5"
+                  className="opacity-95"
+                  style={{ filter: 'drop-shadow(0 0 8px #FF8C00)' }}
+                />
+              </motion.svg>
+
+              {/* Inner counter-rotating spark ring */}
+              <motion.svg
+                animate={{ rotate: -360 }}
+                transition={{ repeat: Infinity, duration: 10, ease: 'linear' }}
+                className="absolute w-[94%] h-[94%]"
+                viewBox="0 0 200 200"
+              >
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="92"
+                  stroke="url(#portalGold)"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeDasharray="2 15 8 10 5 18"
+                  className="opacity-90"
+                  style={{ filter: 'drop-shadow(0 0 12px #FF4500)' }}
+                />
+              </motion.svg>
+
+              {/* Glowing plasma backdrop */}
+              <motion.div
+                animate={{
+                  scale: [0.97, 1.03, 0.97],
+                  opacity: [0.35, 0.5, 0.35],
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute w-[82%] h-[82%] rounded-full bg-[radial-gradient(circle,_rgba(255,140,0,0.22)_0%,_rgba(229,57,53,0.12)_50%,_transparent_75%)]"
+                style={{
+                  boxShadow: '0 0 40px rgba(255,140,0,0.25), inset 0 0 30px rgba(229,57,53,0.15)',
+                  filter: 'blur(4px)',
+                }}
+              />
+              
+              {/* Sparks particles */}
+              <div className="absolute w-full h-full animate-spin" style={{ animationDuration: '4s' }}>
+                <div className="absolute top-4 left-1/2 w-1.5 h-1.5 rounded-full bg-[#FFD700] shadow-[0_0_8px_#FFD700]" />
+                <div className="absolute bottom-6 left-1/3 w-1 h-1 rounded-full bg-[#FF4500] shadow-[0_0_6px_#FF4500]" />
+              </div>
+              <div className="absolute w-[90%] h-[90%] animate-spin" style={{ animationDuration: '6s', animationDirection: 'reverse' }}>
+                <div className="absolute top-12 right-1/4 w-1 h-1 rounded-full bg-[#FF8C00] shadow-[0_0_6px_#FF8C00]" />
+                <div className="absolute bottom-12 left-1/4 w-1.5 h-1.5 rounded-full bg-[#FFF] shadow-[0_0_10px_#FFD700]" />
+              </div>
+            </div>
+
+            {/* Clickable Card Fan Deck of 3 Children */}
+            <div className="relative w-[260px] h-full flex items-center justify-center z-10">
+              {cards.map((card, index) => {
+                const isActive = activeCardIndex === index;
+                const style = getIntroCardStyle(index, cards.length, activeCardIndex);
+
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ y: 400, opacity: 0, scale: 0.4, rotate: 0, x: 0 }}
+                    animate={{
+                      y: style.y,
+                      opacity: 1,
+                      scale: isActive ? 1.08 : 0.82,
+                      rotate: style.rotate,
+                      x: style.x,
+                    }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 110,
+                      damping: 16,
+                      delay: entranceDone ? 0 : 0.3 + index * 0.15, // Staggered only on entrance!
+                    }}
+                    onClick={() => setActiveCardIndex(index)}
+                    className="absolute cursor-pointer w-[180px] h-[250px]"
+                    style={{
+                      zIndex: style.zIndex,
+                      perspective: 1000,
+                    }}
+                  >
+                    {/* Card Outer Shell - Style C: Gold Premium Metal Border (3px thick) */}
+                    <div
+                      className="w-full h-full p-[3px] justify-between"
+                      style={{
+                        background: 'linear-gradient(135deg, #CFB53B 0%, #B71C1C 50%, #CFB53B 100%)',
+                        boxShadow: isActive
+                          ? '0 0 25px rgba(255,215,0,0.65), 0 0 45px rgba(229,57,53,0.4), 0 10px 30px rgba(0,0,0,0.85)'
+                          : '0 15px 35px rgba(0,0,0,0.8)',
+                        clipPath: 'polygon(0 12%, 50% 0, 100% 12%, 100% 88%, 50% 100%, 0 88%)',
+                        transition: 'box-shadow 0.3s ease-in-out',
+                      }}
+                    >
+                      {/* Card Inner Container */}
+                      <div
+                        className="w-full h-full flex flex-col justify-between relative overflow-hidden"
+                        style={{
+                          background: 'linear-gradient(160deg, #15151A 0%, #08080C 100%)',
+                          clipPath: 'polygon(0 12%, 50% 0, 100% 12%, 100% 88%, 50% 100%, 0 88%)',
+                        }}
+                      >
+                        {/* Carbon fiber subtle pattern background */}
+                        <div
+                          className="absolute inset-0 opacity-[0.05] pointer-events-none"
+                          style={{
+                            backgroundImage: 'repeating-linear-gradient(45deg, #FFF 0px, #FFF 1px, transparent 1px, transparent 4px)',
+                            backgroundSize: '4px 4px',
+                          }}
+                        />
+
+                        {/* Image section: 100% width and 85% height of inner container */}
+                        <div className="relative w-full h-[85%] overflow-hidden bg-black border-b border-[#CFB53B]/20">
+                          <img
+                            src={card.photo}
+                            alt={card.name}
+                            className="w-full h-full object-cover object-top"
+                          />
+                          {/* Dark overlay at bottom of photo to merge */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#08080C] via-transparent to-transparent z-10" />
+                        </div>
+
+                        {/* Info Name section: 15% height of inner container */}
+                        <div className="h-[15%] w-full flex items-center justify-center bg-black/35 pb-2.5">
+                          <h3
+                            className="text-spider-gold font-black tracking-widest leading-none truncate px-1 text-center uppercase"
+                            style={{ fontFamily: 'var(--font-bebas)', fontSize: '1.05rem', textShadow: '1px 1px 0px rgba(0,0,0,0.85)' }}
+                          >
+                            {card.name}
+                          </h3>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Subtext */}
+          <div className="text-center max-w-[260px] mx-auto pt-2">
+            <ChromaticText
+              text={displayName.toUpperCase()}
+              style={{
+                fontFamily: 'var(--font-bebas)',
+                fontSize: 'clamp(1.5rem, 6.5vw, 2.2rem)',
+                color: '#FFD700',
+                letterSpacing: '0.04em',
+                lineHeight: 1,
+                textShadow: '2px 2px 0px #C0392B, 4px 4px 0px rgba(0,0,0,0.6)',
+              }}
+            />
+            <p className="text-white/60 text-[11px] leading-normal font-light pt-1.5" style={{ fontFamily: 'var(--font-inter)' }}>
+              {subText}
+            </p>
+          </div>
+
+          {/* Accept Button fade-in */}
+          <div className="w-full min-h-[85px] flex flex-col items-center justify-end">
+            <AnimatePresence>
+              {phase === 'ready' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 25 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 15 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="w-full"
+                >
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    onClick={onNext}
+                    className="relative overflow-hidden w-full py-4.5 flex items-center justify-between px-6 group cursor-pointer"
+                    style={{
+                      background: 'linear-gradient(135deg, #C0392B 0%, #E53935 100%)',
+                      clipPath: 'polygon(0 0, calc(100% - 20px) 0, 100% 100%, 20px 100%)',
+                      boxShadow: '0 0 40px rgba(229,57,53,0.5), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    }}
+                  >
+                    <motion.div
+                      initial={{ x: '-200%' }}
+                      animate={{ x: '200%' }}
+                      transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', width: '50%' }}
+                    />
+                    <span
+                      className="text-white font-black tracking-widest"
+                      style={{ fontFamily: 'var(--font-bebas)', fontSize: '1.3rem', letterSpacing: '0.12em' }}
+                    >
+                      ACEITAR MISSÃO
+                    </span>
+                    <span className="text-white text-xl">▶</span>
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Bottom edge color ribbon */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-1 pointer-events-none"
+        style={{ background: 'linear-gradient(90deg, #C0392B, #FFD700, #1A237E)', zIndex: 10 }}
+      />
     </div>
   );
 }
